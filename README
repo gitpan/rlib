@@ -1,26 +1,16 @@
-NAME
-    rlib - add library directories relative to script location
+rlib allows @INC to be modified with relative path names. Where the
+pathname is relative from depends on where the module is used from.
 
-SYNOPSIS
-     use rlib;
-     use MyModule;
+If used from the package main, it is assumed that it is being called from
+a script and so all paths will be treadted relative to where the script
+was found, this is done by using FindBin.
 
-DESCRIPTION
-    The *rlib* pragma module makes it easy for scripts to pick up library
-    modules relative to where the scripts themselves are installed. The
-    *rlib* pragma tries to add the SCRIPTDIR/lib and SCRIPTDIR/../lib to
-    @INC. If none of these directories exists you will get a warning if you
-    are running perl with the `-w' option.
+If not called from the package main, but from a different package,
+then all paths are treated as relative to the root of the lib
+directory structure where the file was loaded from.
 
-    Basically it does the same as:
+To use this module you will need to first install the File::Spec
+module, which is avaliable on CPAN from
 
-       use FindBin;
-       use lib "$FindBin::Bin/lib";
-       use lib "$FindBin::Bin/../lib";
-
-SEE ALSO
-    the FindBin manpage, the lib manpage, the blib manpage
-
-AUTHOR
-    Gisle Aas
+  http://www.perl.com/CPAN/modules/by-module/File/
 

@@ -1,19 +1,53 @@
-package rlib;  # $Id: rlib.pm,v 1.4 1998/01/13 11:30:47 aas Exp $
-
-$VERSION = '0.01';
+package rlib;
 
 use strict;
-use FindBin qw($Bin);
+use vars qw($VERSION @ISA);
+use lib ();
 use File::Basename qw(dirname);
+use File::Spec;
 
-BEGIN {
-    require lib;
-    my @libs = grep -d $_, "$Bin/lib", dirname($FindBin::Bin) . "/lib";
-    if (@libs) {
-	import lib @libs;
-    } else {
-	warn "No relative lib directory found near $Bin\n" if $^W;
+$VERSION = "0.02";
+@ISA = qw(lib);
+
+sub _dirs {
+    my($pkg,$file) = (caller(1))[0,1];
+    my @rel = @_ ? @_ : qw(../lib lib);
+    my $dir;
+
+    # if called from package main then assume we were called
+    # by a script not a module
+
+    if($pkg eq 'main') {
+	require FindBin;
+	# hide "used only once" warning
+	$dir = ($FindBin::Bin,$FindBin::Bin)[0];
     }
+    else {
+	require Cwd;
+	$dir = Cwd::abs_path(dirname($file));
+    }
+
+    # If we were called by a package then traverse upwards
+    # to root of lib
+
+    while($pkg =~ /::/g) {
+	$dir = dirname($dir);
+    }
+
+    if($^O eq 'VMS') {
+	require VMS::Filespec;
+	@rel = map { VMS::Filespec::unixify($_) } @rel;
+    }
+
+    map { File::Spec->catdir($dir,$_) } @rel;
+}
+
+sub import {
+    shift->SUPER::import( _dirs(@_) );
+}
+
+sub unimport {
+    shift->SUPER::unimport( _dirs(@_) );
 }
 
 1;
@@ -22,33 +56,37 @@ __END__
 
 =head1 NAME
 
-rlib - add library directories relative to script location
+rlib - manipulate @INC at compile time with relative paths
 
 =head1 SYNOPSIS
 
- use rlib;
- use MyModule;
+    use rlib LIST;
+
+    no rlib LIST;
 
 =head1 DESCRIPTION
 
-The I<rlib> pragma module makes it easy for scripts to pick up library
-modules relative to where the scripts themselves are installed.  The
-I<rlib> pragma tries to add the F<SCRIPTDIR/lib> and
-F<SCRIPTDIR/../lib> to @INC.  If none of these directories exists you
-will get a warning if you are running perl with the C<-w> option.
+rlib works in the same way as lib, except that all paths in C<LIST>
+are treated as relative paths.
 
-Basically it does the same as:
+If rlib is used from the C<main> package then the paths in C<LIST>
+are assumed to be relative to where the current script C<$0> is
+located. This is done by using the FindBin package.
 
-   use FindBin;
-   use lib "$FindBin::Bin/lib";
-   use lib "$FindBin::Bin/../lib";
+If rlib is used from within any package other tha C<main> then the
+paths in C<LIST> are assumed to be relative to the root of the library
+where the file for that package was found.
+
+If C<LIST> is empty then C<"../lib","lib"> is assumed.
 
 =head1 SEE ALSO
 
-L<FindBin>, L<lib>, L<blib>
+lib - module which adds paths to @INC
+
+FindBin - module for locating script bin directory
 
 =head1 AUTHOR
 
-Gisle Aas
+Graham Barr <gbarr@pobox.com>
 
 =cut
